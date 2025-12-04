@@ -1,23 +1,28 @@
+# bot/db/database.py
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 def get_conn(DATABASE_URL: str | None = None):
+    """
+    Always connect to PostgreSQL using DATABASE_URL from environment.
+    No sqlite, no db_path.
+    """
     if DATABASE_URL is None:
         DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # Kết nối PostgreSQL
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not set")
+
     conn = psycopg2.connect(DATABASE_URL)
     return conn
 
 
 def ensure_tables(conn):
+    """
+    Create all tables using PostgreSQL syntax (Option A: Simple & Stable).
+    """
     cur = conn.cursor()
-
-    # ==========================
-    # TẠO BẢNG THEO SCHEMA CỦA BẠN
-    # (đã convert từ SQLite -> Postgre kiểu an toàn)
-    # ==========================
 
     # teams
     cur.execute("""

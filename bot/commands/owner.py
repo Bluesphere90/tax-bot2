@@ -1,3 +1,4 @@
+# bot/commands/owner.py
 import os
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, Application
@@ -14,23 +15,32 @@ def get_owner_ids():
         try:
             out.add(int(p))
         except ValueError:
-            # bỏ qua giá trị không phải số
             pass
     return out
 
 def is_owner(user_id: int) -> bool:
     return user_id in get_owner_ids()
 
-# db helpers (simple)
 def _create_team(conn, chat_id: int, name: str):
     cur = conn.cursor()
-    cur.execute("INSERT OR IGNORE INTO teams(group_chat_id, name) VALUES (?,?)", (chat_id, name))
+    # upsert by group_chat_id
+    cur.execute(
+        "INSERT INTO teams(group_chat_id, name) VALUES (%s, %s) ON CONFLICT (group_chat_id) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+        (chat_id, name),
+    )
+    row = cur.fetchone()
+    if row:
+        team_id = row[0]
+    else:
+        # fallback select
+        cur.execute("SELECT id FROM teams WHERE group_chat_id = %s", (chat_id,))
+        team_id = cur.fetchone()[0]
     conn.commit()
-    return cur.lastrowid
+    return team_id
 
 def _delete_team_by_chatid(conn, chat_id: int):
     cur = conn.cursor()
-    cur.execute("DELETE FROM teams WHERE group_chat_id = ?", (chat_id,))
+    cur.execute("DELETE FROM teams WHERE group_chat_id = %s", (chat_id,))
     conn.commit()
 
 def _list_teams(conn):
@@ -85,8 +95,6 @@ async def list_all_teams(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         conn.close()
 
-
-
 async def assign_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not is_owner(uid):
@@ -98,7 +106,6 @@ async def assign_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     tax = args[0].strip()
     team_chat_id = args[1].strip()
-    # allow team_chat_id as numeric chat_id or you can accept team DB id if you like
     try:
         team_chat_id_int = int(team_chat_id)
     except ValueError:
@@ -108,16 +115,14 @@ async def assign_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = get_conn()
     try:
         cur = conn.cursor()
-        # find team id by group_chat_id
-        cur.execute("SELECT id FROM teams WHERE group_chat_id = ?", (team_chat_id_int,))
+        cur.execute("SELECT id FROM teams WHERE group_chat_id = %s", (team_chat_id_int,))
         t = cur.fetchone()
         if not t:
             await update.message.reply_text("Không tìm thấy team tương ứng với chat id này.")
             return
         team_id = t[0]
-        # upsert company row and set team_id
-        cur.execute("INSERT OR IGNORE INTO companies(company_tax_id, company_name, team_id) VALUES (?, ?, ?)", (tax, tax, team_id))
-        cur.execute("UPDATE companies SET team_id = ? WHERE company_tax_id = ?", (team_id, tax))
+        cur.execute("INSERT INTO companies(company_tax_id, company_name, team_id) VALUES (%s, %s, %s) ON CONFLICT (company_tax_id) DO UPDATE SET team_id = EXCLUDED.team_id", (tax, tax, team_id))
+        cur.execute("UPDATE companies SET team_id = %s WHERE company_tax_id = %s", (team_id, tax))
         conn.commit()
         await update.message.reply_text(f"Đã gán MST {tax} vào team {team_chat_id_int}.")
     finally:
@@ -131,10 +136,8 @@ async def test_daily(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Bạn không phải Owner.")
         return
 
-    db_path = os.getenv("DB_PATH", "./data/bot.db")
-
-    # chạy reminder ngay
-    await send_daily_reminders(context.application, db_path)
+    # run reminder immediately
+    await send_daily_reminders(context.application)
 
     await update.message.reply_text("Đã chạy send_daily_reminders() xong.")
 

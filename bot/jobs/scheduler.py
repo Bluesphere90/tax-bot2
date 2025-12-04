@@ -2,14 +2,13 @@
 from telegram.ext import Application
 from datetime import time as dtime
 import pytz
-import os
 import asyncio
 
 from bot.services.reminder_service import send_daily_reminders, send_hourly_reminders
 
 TIMEZONE = pytz.timezone("Asia/Bangkok")
 
-def setup_schedulers(app: Application, db_path: str):
+def setup_schedulers(app: Application):
     jq = app.job_queue
     if jq is None:
         print("WARNING: JobQueue is not available. Install python-telegram-bot[job-queue] to enable scheduling.")
@@ -17,13 +16,13 @@ def setup_schedulers(app: Application, db_path: str):
 
     async def daily_job(context):
         try:
-            await send_daily_reminders(context.application, db_path)
+            await send_daily_reminders(context.application)
         except Exception as e:
             print("Exception in daily_job:", e)
 
     async def hourly_job(context):
         try:
-            await send_hourly_reminders(context.application, db_path)
+            await send_hourly_reminders(context.application)
         except Exception as e:
             print("Exception in hourly_job:", e)
 
