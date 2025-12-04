@@ -69,7 +69,7 @@ def _gather_reminder_payloads(db_path: str, ref_date: date = None) -> List[Dict[
         for t in teams:
             team_id, chat_id, team_name = t
             # get companies in team
-            cur.execute("SELECT company_tax_id, company_name, owner_telegram_id FROM companies WHERE team_id = ?", (team_id,))
+            cur.execute("SELECT company_tax_id, company_name, owner_telegram_id FROM companies WHERE team_id = %s", (team_id,))
             comps = cur.fetchall()
             if not comps:
                 continue
