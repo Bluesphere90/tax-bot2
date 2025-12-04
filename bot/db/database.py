@@ -1,11 +1,16 @@
-import sqlite3
+import os
+import psycopg2
 from pathlib import Path
 from typing import Optional
 
-def get_conn(db_path: Optional[str]=None):
-    if db_path is None:
-        db_path = "./data/bot.db"
-    conn = sqlite3.connect(str(db_path), timeout=30, check_same_thread=False)
+
+
+def get_conn(DATABASE_URL: Optional[str]=None):
+    if DATABASE_URL is None:
+        DATABASE_URL = os.getenv("DATABASE_URL")
+
+    conn = psycopg2.connect(DATABASE_URL)
+    # conn = sqlite3.connect(str(db_path), timeout=30, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
