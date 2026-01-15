@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# Environment files with secrets
+config/config.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backups (contain database data)
+backups/*.sql.gz
+backups/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

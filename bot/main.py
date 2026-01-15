@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def start_bot():
     # load .env from config if exists (keep backward compatible)
-    env_path = BASE_DIR / "config" / "config.env"
+    env_path = BASE_DIR.parent / "config" / "config.env"
     if env_path.exists():
         load_dotenv(env_path)
 
